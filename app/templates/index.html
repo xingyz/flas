@@ -1,0 +1,78 @@
+<html>
+  <head>
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        var last_date;
+        $(document).ready(function(){
+          var socket = io.connect('http://' + document.domain + ':' + location.port);
+          socket.on('connect',function(){
+              socket.emit('connected',{data:"request last click time"})
+          });
+          socket.on('server confirmation', function(data) {
+              last_date = new Date(data.last).getTime();
+              console.log("server confirmed!");
+          });
+          socket.on('collective update',function(data){
+            var name = data.data.name;
+            var time = data.data.time;
+            $("#last_clicker").html("Last click: "+time+"</br> Last clicker: "+name);
+            console.log("!!!from server "+name+' '+time);
+            last_date = new Date(time).getTime();
+          });
+        });
+
+        function showTime(){
+          var date = new Date().getTime();
+          var difference = date-last_date;
+          document.getElementById("current_time").innerHTML = msToTime(difference);
+          var t = setTimeout(function(){showTime()},500);
+        }/Users/RYAN/Documents/thebutton/thebutton-ryan/app/templates/index.html
+        function msToTime(duration) {
+            var  seconds = parseInt((duration/1000)%60)
+                , minutes = parseInt((duration/(1000*60))%60)
+                , hours = parseInt((duration/(1000*60*60))%24);
+
+            hours = (hours < 10) ? "0" + hours : hours;
+            minutes = (minutes < 10) ? "0" + minutes : minutes;
+            seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+            return hours + ":" + minutes + ":" + seconds ;
+        }
+    </script>
+  </head>
+  <body onload = "showTime()">
+    <p id='last_clicker'>
+        Last click: {{ last_click }}<br/>
+        Last clicker: {{ last_clicker }}<br/>
+    </p>
+    Current time: <block id="current_time"></block></br>
+    <form method="POST" action="/click">
+        {{form.hidden_tag()}}  <!-- implements WTF CSRF -->
+        <input type="hidden" name="last_click" value="{{ last_click }}" />
+        {{form.username(placeholder="Your name",size=40)}}
+        <input type="submit" values="submit">
+        {% with errors = get_flashed_messages(with_categories=true) %}
+            {% for error in errors %}
+            <span style="color:red;">{{error[1]}}</span>
+            {% endfor %}
+        {%endwith%}
+    </form>
+    <hr>
+    <h2>Our LeaderBoard </h2>
+    <table border='1'>
+      <tr>
+        <td>username</td>
+        <td>click time</td>
+        <td>waited time</td>
+    {% for leader in leaders %}
+      <tr>
+        <td>{{leader.username}}</td>
+        <td>{{leader.clicked}}</td>
+        <td>{{leader.waited}}</td>
+      </tr>
+    {% endfor %}
+    </table>
+    <br><hr>
+  </body>
+</html>

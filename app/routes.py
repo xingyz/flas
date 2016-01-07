@@ -9,11 +9,12 @@ from api import cats_api
 app.register_blueprint(cats_api)  # connects route configration in api.py
 
 @app.route('/')
-def index():
+@app.route('/<int:page>')
+def index(page=1):
     form = ClickForm()
     last_click, last_clicker = get_last_click_and_clicker()
     delta = datetime.utcnow() - last_click
-    leaders = get_leaders()
+    leaders = get_leaders(page)
     return render_template('index.html', **locals())
 
 @socketio.on('connected')

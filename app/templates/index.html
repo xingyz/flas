@@ -1,78 +1,102 @@
 <html>
   <head>
-    <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="/static/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="/static/countup/jquery.countup.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js"></script>
-    <script type="text/javascript" charset="utf-8">
-        var last_date;
-        $(document).ready(function(){
-          var socket = io.connect('http://' + document.domain + ':' + location.port);
-          socket.on('connect',function(){
-              socket.emit('connected',{data:"request last click time"})
-          });
-          socket.on('server confirmation', function(data) {
-              last_date = new Date(data.last).getTime();
-              console.log("server confirmed!");
-          });
-          socket.on('collective update',function(data){
-            var name = data.data.name;
-            var time = data.data.time;
-            $("#last_clicker").html("Last click: "+time+"</br> Last clicker: "+name);
-            console.log("!!!from server "+name+' '+time);
-            last_date = new Date(time).getTime();
-          });
-        });
-
-        function showTime(){
-          var date = new Date().getTime();
-          var difference = date-last_date;
-          document.getElementById("current_time").innerHTML = msToTime(difference);
-          var t = setTimeout(function(){showTime()},500);
-        }/Users/RYAN/Documents/thebutton/thebutton-ryan/app/templates/index.html
-        function msToTime(duration) {
-            var  seconds = parseInt((duration/1000)%60)
-                , minutes = parseInt((duration/(1000*60))%60)
-                , hours = parseInt((duration/(1000*60*60))%24);
-
-            hours = (hours < 10) ? "0" + hours : hours;
-            minutes = (minutes < 10) ? "0" + minutes : minutes;
-            seconds = (seconds < 10) ? "0" + seconds : seconds;
-
-            return hours + ":" + minutes + ":" + seconds ;
-        }
-    </script>
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/countup/jquery.countup.js"></script>
   </head>
-  <body onload = "showTime()">
-    <p id='last_clicker'>
-        Last click: {{ last_click }}<br/>
+  <body>
+    <div class="container">
+      <div class="jumbotron text-center">
+        <h1>Flask-theButton</h1>
+        <h5>Timer records the time passed from the last click...</h5>
+      </div>
+    </div>
+    <div class="container text-center">
+      <form class="form-inline" method="POST" action="/click">
+          {{form.hidden_tag()}}  <!-- implements WTF CSRF -->
+          <input type="hidden" name="last_click" value="{{ last_click }}" />
+          {{form.username(placeholder="Your name",size=40,id="user")}}
+          <input type="submit" class="btn btn-primary btn-md" values="theButton">
+          {% with errors = get_flashed_messages(with_categories=true) %}
+              {% for error in errors %}
+              <span style="color:red;">{{error[1]}}</span>
+              {% endfor %}
+          {%endwith%}
+      </form>
+    </div>
+    <h3 id='last_clicker' class="text-center">
         Last clicker: {{ last_clicker }}<br/>
-    </p>
-    Current time: <block id="current_time"></block></br>
-    <form method="POST" action="/click">
-        {{form.hidden_tag()}}  <!-- implements WTF CSRF -->
-        <input type="hidden" name="last_click" value="{{ last_click }}" />
-        {{form.username(placeholder="Your name",size=40)}}
-        <input type="submit" values="submit">
-        {% with errors = get_flashed_messages(with_categories=true) %}
-            {% for error in errors %}
-            <span style="color:red;">{{error[1]}}</span>
-            {% endfor %}
-        {%endwith%}
-    </form>
+    </h3>
+    <div id="countup"></div>
     <hr>
-    <h2>Our LeaderBoard </h2>
-    <table border='1'>
-      <tr>
-        <td>username</td>
-        <td>click time</td>
-        <td>waited time</td>
-    {% for leader in leaders %}
-      <tr>
-        <td>{{leader.username}}</td>
-        <td>{{leader.clicked}}</td>
-        <td>{{leader.waited}}</td>
-      </tr>
-    {% endfor %}
-    </table>
-    <br><hr>
+    <div class="container">
+      <h2 class="text-center">Who gets to wait the longest?</h2>
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <td><b>username</b></td>
+            <td><b>click time</b></td>
+            <td><b>waited time</b></td>
+          </tr>
+        </thead>
+        <tbody>
+          {% for leader in leaders.items %}
+          <tr>
+            <td>{{leader.username}}</td>
+            <td>{{leader.clicked}}</td>
+            <td>{{leader.waited}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <ul class="pager">
+        <li>{% if leaders.has_prev %}<a href="{{ url_for('index', page=leaders.prev_num) }}">Higer Ranks</a>{% else %}Higher Ranks{% endif %}</li>
+        <li>{% if leaders.has_next %}<a href="{{ url_for('index', page=leaders.next_num) }}">Lower Ranks</a>{% else %}Lower Ranks{% endif %}</li>
+      </ul>
+      <br><hr>
+    </div>
   </body>
+  <script type="text/javascript" charset="utf-8">
+      var last_date;
+      $(document).ready(function(){
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        socket.on('connect',function(){
+            socket.emit('connected',{data:"request last click time"})
+        });
+        socket.on('server confirmation', function(data) {
+            last_date = new Date(data.last).getTime();
+            console.log("server confirmed!");
+            $('#countup').countup({
+              start: new Date(last_date)
+            });
+        });
+        socket.on('collective update',function(data){
+          var name = data.data.name;
+          var time = data.data.time;
+          $("#last_clicker").html("Last click: "+time+"</br> Last clicker: "+name);
+          console.log("!!!from server "+name+' '+time);
+          last_date = new Date(time).getTime();
+        });
+      });
+
+      function msToTime(duration) {
+          var  seconds = parseInt((duration/1000)%60)
+              , minutes = parseInt((duration/(1000*60))%60)
+              , hours = parseInt((duration/(1000*60*60))%24);
+
+          hours = (hours < 10) ? "0" + hours : hours;
+          minutes = (minutes < 10) ? "0" + minutes : minutes;
+          seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+          return hours + ":" + minutes + ":" + seconds ;
+      }
+  // </script>
+  //     <script type="text/javascript">
+
+      </script>
 </html>

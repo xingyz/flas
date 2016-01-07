@@ -48,5 +48,5 @@ def get_last_click_and_clicker():
         return datetime.utcnow(), None
     return last_clicker.clicked, last_clicker.username
 
-def get_leaders():
-    return Clicker.query.order_by(Clicker.waited.desc()).all()
+def get_leaders(page):
+    return Clicker.query.order_by(Clicker.waited.desc()).paginate(page,10,False)
